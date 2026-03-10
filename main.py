@@ -8,8 +8,14 @@ from src.levels.level_1 import grounds, obstacles, get_rewards, obstacles_behind
 pygame.init()
 
 # Set up display
-width, height = 1920, 1080
-screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
+info = pygame.display.Info()
+SCREEN_W, SCREEN_H = info.current_w, info.current_h
+screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.FULLSCREEN)
+
+# Internal resolution of game logic
+GAME_W, GAME_H = 1920, 1080
+game_surface = pygame.Surface((GAME_W, GAME_H))
+
 pygame.display.set_caption('Pixel Run')
 
 clock = pygame.time.Clock()
@@ -65,11 +71,12 @@ def increase_rewardcounter():
     reward_text = reward_font.render('Rewards: ' + str(reward_counter), True, (255, 94, 234))
 
 # Backgrounds
-bg_start = pygame.image.load(start_bg).convert()
-bg_gameover = pygame.image.load(gameover_bg1).convert()
-bg_stop = pygame.image.load(stop_bg).convert()
-bg_game = pygame.image.load(game_bg).convert()
-bg_congrats = pygame.image.load(congrats_bg).convert()
+# Backgrounds
+bg_start = pygame.transform.scale(pygame.image.load(start_bg).convert(), (GAME_W, GAME_H))
+bg_gameover = pygame.transform.scale(pygame.image.load(gameover_bg1).convert(), (GAME_W, GAME_H))
+bg_stop = pygame.transform.scale(pygame.image.load(stop_bg).convert(), (GAME_W, GAME_H))
+bg_game = pygame.transform.scale(pygame.image.load(game_bg).convert(), (GAME_W, GAME_H))
+bg_congrats = pygame.transform.scale(pygame.image.load(congrats_bg).convert(), (GAME_W, GAME_H))
 
 # Load music
 pygame.mixer.music.load(sinnesloschen_beam)
@@ -84,13 +91,14 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        elif event.type == pygame.MOUSEBUTTONDOWN :
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = event.pos
+            pos_x = int(mouse_x * GAME_W / SCREEN_W)
+            pos_y = int(mouse_y * GAME_H / SCREEN_H)
 
             if event.button == 1 and scene == 1:
-                (pos_x, pos_y) = pygame.mouse.get_pos()
-                if pos_x > 612 and pos_x < 632+676 and pos_y > 475 and pos_y < 495+112:
-                    
-                    screen.blit(bg_stop, (0, 0))
+                if button_start.rect.collidepoint(pos_x, pos_y):
                     offset_x = 0
                     offset_y = 0
                     character_jump_count = 0
@@ -99,20 +107,18 @@ while True:
                     reward_counter = 0
                     reward_text = reward_font.render('Rewards: ' + str(reward_counter), True, (255, 94, 234))
                     scene = 2
-                elif pos_x > 810 and pos_x < 830+280 and pos_y > 675 and pos_y < 695+112:
+                elif button_quit.rect.collidepoint(pos_x, pos_y):
                     pygame.quit()
                     sys.exit()
 
             elif event.button == 1 and scene == 3:
-                (pos_x, pos_y) = pygame.mouse.get_pos()
-                if pos_x > 608 and pos_x < 628+684 and pos_y > 275 and pos_y < 295+162:
+                if button_resume.rect.collidepoint(pos_x, pos_y):
                     scene = 2
-                elif pos_x > 551 and pos_x < 571+798 and pos_y > 535 and pos_y < 555+114:
+                elif button_back.rect.collidepoint(pos_x, pos_y):
                     scene = 1
 
             elif event.button == 1 and scene == 4:
-                (pos_x, pos_y) = pygame.mouse.get_pos()
-                if pos_x > 640 and pos_x < 660+212 and pos_y > 620 and pos_y < 640+104:
+                if button_yes.rect.collidepoint(pos_x, pos_y):
                     offset_x = 0
                     offset_y = 0
                     character_jump_count = 0
@@ -121,42 +127,44 @@ while True:
                     reward_counter = 0
                     reward_text = reward_font.render('Rewards: ' + str(reward_counter), True, (255, 94, 234))
                     scene = 2
-                elif pos_x > 1050 and pos_x < 1070+152 and pos_y > 620 and pos_y < 640+104:
+                elif button_no.rect.collidepoint(pos_x, pos_y):
                     scene = 1
-                    
+
+    game_surface.fill((0,0,0))
+
     # Update game logic here
     if scene == 1:
-        screen.blit(bg_start, (0, 0))
-        button_start.draw(screen)
-        button_quit.draw(screen)
+        game_surface.blit(bg_start, (0, 0))
+        button_start.draw(game_surface)
+        button_quit.draw(game_surface)
         alpha = 255
         if direction_alpha > 0:
             direction_alpha *= -1
 
     elif scene == 2:
-        screen.blit(bg_game, (0, 0))
-        screen.blit(reward_text, (80, 40))
+        game_surface.blit(bg_game, (0, 0))
+        game_surface.blit(reward_text, (80, 40))
 
         obstacles_behind.update(offset_x, offset_y)
-        obstacles_behind.draw(screen)
+        obstacles_behind.draw(game_surface)
 
         grounds.update(offset_x, offset_y)
-        grounds.draw(screen)
+        grounds.draw(game_surface)
 
         obstacles.update(offset_x, offset_y)
-        obstacles.draw(screen)
+        obstacles.draw(game_surface)
 
         portal_entry.update(offset_x, offset_y)
-        portal_entry.draw(screen)
+        portal_entry.draw(game_surface)
         portal_exit.update(offset_x, offset_y)
-        portal_exit.draw(screen)
+        portal_exit.draw(game_surface)
 
         if character.rect.centerx > portal_exit.rect.centerx-5 and character.rect.centerx < portal_exit.rect.centerx+5:
             if character.rect.centery > portal_exit.rect.y and character.rect.centery < portal_exit.rect.y + portal_exit.rect.height:
                 scene = 5
 
         rewards.update(offset_x, offset_y)
-        rewards.draw(screen)
+        rewards.draw(game_surface)
 
         on_ground = character.check_grounds(grounds)
         if len(on_ground) == 0:
@@ -192,32 +200,37 @@ while True:
         
         character.check_rewards(rewards, increase_rewardcounter)
         character.check_obstacles(obstacles, obstacles_behind, game_over)
-        character.draw(screen, character_direction)
+        character.draw(game_surface, character_direction)
 
     elif scene == 3:
-            screen.blit(bg_stop, (0, 0))
-            button_resume.draw(screen)
-            button_back.draw(screen)
+        game_surface.blit(bg_stop, (0, 0))
+        button_resume.draw(game_surface)
+        button_back.draw(game_surface)
 
     elif scene == 4:
-        screen.blit(bg_gameover, (0, 0))
-        button_yes.draw(screen)
-        button_no.draw(screen)
+        game_surface.blit(bg_gameover, (0, 0))
+        button_yes.draw(game_surface)
+        button_no.draw(game_surface)
 
     elif scene == 5:
-        screen.blit(bg_congrats, (0, 0))
+        game_surface.blit(bg_congrats, (0, 0))
         yourrewards_text = yourrewards_font.render('Your rewards: ' + str(reward_counter), True, (180, 250, 82))
-        screen.blit(yourrewards_text, (520, 450))
+        game_surface.blit(yourrewards_text, (520, 450))
         alpha += direction_alpha
         if alpha >= 255 or alpha <= 0:
             direction_alpha *= -1
         presskey_text = presskey_font.render('Press ENTER to continue...', True, (179, 191, 174))
         presskey_text.set_alpha(alpha)
-        screen.blit(presskey_text, (650, 600))
+        game_surface.blit(presskey_text, (650, 600))
         key = pygame.key.get_pressed()
         if key[pygame.K_RETURN]:
             scene = 1
 
     # Update display
+    # pygame.display.flip()
+    # !!!
+    scaled_surface = pygame.transform.scale(game_surface, (SCREEN_W, SCREEN_H))
+    screen.blit(scaled_surface, (0, 0))
     pygame.display.flip()
+    # !!!
     clock.tick(60)
